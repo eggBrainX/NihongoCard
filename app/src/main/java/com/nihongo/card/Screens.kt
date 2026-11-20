@@ -21,6 +21,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -53,13 +55,13 @@ fun HomeScreen(go: (String) -> Unit) {
         Tile("✨", "Generate AI", "Kartu & soal baru", "ai")
     )
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("日本語カード", fontSize = 26.sp, fontWeight = FontWeight.Black, color = c.text)
-                Text("Belajar Jepang, ringkas & seru", fontSize = 12.sp, color = c.text.copy(alpha = .7f))
+                Text("Belajar Jepang, ringkas & seru", fontSize = 14.sp, color = c.text.copy(alpha = .7f))
             }
             NeoButton("⚙", { go("settings") }, bg = c.blue)
         }
@@ -72,12 +74,12 @@ fun HomeScreen(go: (String) -> Unit) {
             Text("${pool.size} kartu siap • ${AppState.deck.label}$lv", color = c.onAccent, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
         tiles.chunked(2).forEachIndexed { r, row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEachIndexed { k, t ->
-                    NeoCard(Modifier.weight(1f), bg = colors[r * 2 + k], onClick = { go(t.route) }) {
-                        Text(t.icon, fontSize = 24.sp)
-                        Text(t.title, color = c.onAccent, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                        Text(t.sub, color = c.onAccent, fontSize = 11.sp)
+                    NeoCard(Modifier.weight(1f).fillMaxHeight(), bg = colors[r * 2 + k], onClick = { go(t.route) }, center = true) {
+                        Text(t.icon, fontSize = 34.sp)
+                        Text(t.title, color = c.onAccent, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                        Text(t.sub, color = c.onAccent, fontSize = 13.sp)
                     }
                 }
             }
@@ -106,14 +108,14 @@ fun StudyScreen(back: () -> Unit) {
             NeoCard(Modifier.fillMaxWidth().weight(1f), bg = if (flipped) c.pink else c.main, onClick = { flipped = !flipped }, center = true) {
                 if (!flipped) {
                     Text(f.front, color = c.onAccent, fontWeight = FontWeight.Black, textAlign = TextAlign.Center,
-                        fontSize = if (f.front.length > 3) 44.sp else 96.sp)
-                    Text("ketuk untuk membalik", color = c.onAccent, fontSize = 11.sp)
+                        fontSize = if (f.front.length > 3) 56.sp else 140.sp)
+                    Text("ketuk untuk membalik", color = c.onAccent, fontSize = 14.sp)
                 } else {
-                    Text(f.meaning, color = c.onAccent, fontWeight = FontWeight.Black, fontSize = 26.sp, textAlign = TextAlign.Center)
-                    if (f.reading.isNotBlank()) Text(f.reading, color = c.onAccent, fontSize = 20.sp, textAlign = TextAlign.Center)
-                    if (f.example.isNotBlank()) Text(f.example, color = c.onAccent, fontSize = 13.sp, textAlign = TextAlign.Center,
+                    Text(f.meaning, color = c.onAccent, fontWeight = FontWeight.Black, fontSize = 34.sp, textAlign = TextAlign.Center)
+                    if (f.reading.isNotBlank()) Text(f.reading, color = c.onAccent, fontSize = 26.sp, textAlign = TextAlign.Center)
+                    if (f.example.isNotBlank()) Text(f.example, color = c.onAccent, fontSize = 17.sp, textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 10.dp))
-                    Text(f.level, color = c.onAccent, fontSize = 11.sp, modifier = Modifier.padding(top = 8.dp))
+                    Text(f.level, color = c.onAccent, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -134,13 +136,14 @@ fun QuizScreen(sim: Boolean, back: () -> Unit) {
     var count by remember { mutableIntStateOf(10) }
     var loading by remember { mutableStateOf(false) }
     var err by remember { mutableStateOf("") }
+    var job by remember { mutableStateOf<Job?>(null) }
     val pool = AppState.pool()
     val cur = qs
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         TopBar(if (sim) "Simulasi Latihan" else "Tebak", if (cur != null) ({ qs = null }) else back)
         if (cur != null) {
             QuizRunner(cur, if (sim) cur.size * 20 else 0) { qs = null }
-        } else Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        } else Column(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Label("Jumlah soal")
             Chips { (if (sim) listOf(10, 20, 30) else listOf(5, 10, 20)).forEach { NeoChip("$it", count == it) { count = it } } }
             if (!sim) {
@@ -148,21 +151,24 @@ fun QuizScreen(sim: Boolean, back: () -> Unit) {
                 Chips {
                     listOf("Karakter→Arti", "Arti→Karakter", "Campur").forEachIndexed { i, s -> NeoChip(s, dir == i) { dir = i } }
                 }
-            } else Text("Waktu: 20 detik per soal. Soal campur dari kartu terpilih.", color = c.text, fontSize = 12.sp)
+            } else Text("Waktu: 20 detik per soal. Soal campur dari kartu terpilih.", color = c.text, fontSize = 14.sp)
             if (pool.size < 4) EmptyCard()
             NeoButton("▶ Mulai dari kartu (${AppState.deck.label})", {
                 qs = makeQuestions(pool, count, if (sim) 2 else dir)
-            }, Modifier.fillMaxWidth(), c.green, enabled = pool.size >= 4)
-            NeoButton(if (loading) "Membuat soal…" else "✨ Contoh soal AI (${AppState.level.label})", {
-                if (!loading) {
+            }, Modifier.fillMaxWidth().weight(1f), c.green, enabled = pool.size >= 4, fontSize = 20.sp)
+            NeoButton(if (loading) "⏳ Membuat soal… (ketuk untuk batal)" else "✨ Contoh soal AI (${AppState.level.label})", {
+                if (loading) { job?.cancel(); loading = false }
+                else {
                     loading = true; err = ""
-                    scope.launch {
-                        try { qs = Ai.questions(AppState.level, count) } catch (e: Exception) { err = e.message ?: "Gagal" }
+                    job = scope.launch {
+                        try { qs = Ai.questions(AppState.level, count) }
+                        catch (e: CancellationException) { throw e }
+                        catch (e: Throwable) { err = e.message ?: "Gagal" }
                         loading = false
                     }
                 }
-            }, Modifier.fillMaxWidth(), c.pink, enabled = !loading)
-            if (err.isNotBlank()) NeoCard(Modifier.fillMaxWidth(), bg = c.red) { Text(err, color = c.onAccent, fontSize = 12.sp) }
+            }, Modifier.fillMaxWidth().weight(1f), c.pink, fontSize = 20.sp)
+            if (err.isNotBlank()) NeoCard(Modifier.fillMaxWidth(), bg = c.red) { Text(err, color = c.onAccent, fontSize = 14.sp) }
         }
     }
 }
@@ -236,28 +242,30 @@ fun MatchScreen(back: () -> Unit) {
             selL = null; selR = null
         }
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         TopBar("Cocokkan", back)
         if (cards.size < 2) EmptyCard()
         else {
-            Text("Pasangkan karakter dengan artinya • salah: $miss", color = c.text, fontSize = 13.sp)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Pasangkan karakter dengan artinya • salah: $miss", color = c.text, fontSize = 15.sp)
+            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     left.forEach { f ->
-                        NeoButton(f.front, { if (f !in done) selL = f }, Modifier.fillMaxWidth(),
-                            when { f in done -> c.green; f == selL -> c.main; else -> c.surface }, fontSize = 22.sp)
+                        NeoButton(f.front, { if (f !in done) selL = f }, Modifier.fillMaxWidth().weight(1f),
+                            when { f in done -> c.green; f == selL -> c.main; else -> c.surface },
+                            fontSize = if (f.front.length > 2) 22.sp else 34.sp)
                     }
                 }
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     right.forEach { f ->
-                        NeoButton(f.meaning, { if (f !in done) selR = f }, Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                            when { f in done -> c.green; f == selR -> c.main; else -> c.surface }, fontSize = 13.sp)
+                        NeoButton(f.meaning, { if (f !in done) selR = f }, Modifier.fillMaxWidth().weight(1f),
+                            when { f in done -> c.green; f == selR -> c.main; else -> c.surface },
+                            fontSize = if (f.meaning.length > 8) 16.sp else 22.sp)
                     }
                 }
             }
             if (done.size == cards.size) {
                 NeoCard(Modifier.fillMaxWidth(), bg = c.green, center = true) {
-                    Text("🎉 Selesai! Salah $miss kali", color = c.onAccent, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                    Text("🎉 Selesai! Salah $miss kali", color = c.onAccent, fontWeight = FontWeight.Black, fontSize = 20.sp)
                 }
                 NeoButton("Main lagi", { round++ }, Modifier.fillMaxWidth())
             }
@@ -274,6 +282,7 @@ fun AiScreen(back: () -> Unit) {
     var count by remember { mutableIntStateOf(10) }
     var loading by remember { mutableStateOf(false) }
     var err by remember { mutableStateOf("") }
+    var job by remember { mutableStateOf<Job?>(null) }
     var result by remember { mutableStateOf<List<Flash>>(emptyList()) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         TopBar("Generate AI", back)
@@ -287,29 +296,32 @@ fun AiScreen(back: () -> Unit) {
         NeoField(topic, { topic = it }, "mis. makanan, sekolah, kerja", Modifier.fillMaxWidth())
         Label("Jumlah")
         Chips { listOf(5, 10, 15).forEach { NeoChip("$it", count == it) { count = it } } }
-        NeoButton(if (loading) "Memproses…" else "✨ Generate", {
-            if (!loading) {
+        NeoButton(if (loading) "⏳ Memproses… (ketuk untuk batal)" else "✨ Generate", {
+            if (loading) { job?.cancel(); loading = false }
+            else {
                 loading = true; err = ""
-                scope.launch {
-                    try { result = Ai.cards(kind, topic, count, AppState.level) } catch (e: Exception) { err = e.message ?: "Gagal" }
+                job = scope.launch {
+                    try { result = Ai.cards(kind, topic, count, AppState.level) }
+                    catch (e: CancellationException) { throw e }
+                    catch (e: Throwable) { err = e.message ?: "Gagal" }
                     loading = false
                 }
             }
-        }, Modifier.fillMaxWidth(), enabled = !loading)
-        if (err.isNotBlank()) NeoCard(Modifier.fillMaxWidth(), bg = c.red) { Text(err, color = c.onAccent, fontSize = 12.sp) }
+        }, Modifier.fillMaxWidth())
+        if (err.isNotBlank()) NeoCard(Modifier.fillMaxWidth(), bg = c.red) { Text(err, color = c.onAccent, fontSize = 14.sp) }
         if (result.isNotEmpty()) {
             result.forEach {
                 NeoCard(Modifier.fillMaxWidth()) {
                     Text("${it.front}  ${it.reading}", color = c.text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Text("${it.meaning} • ${it.level}", color = c.text, fontSize = 13.sp)
-                    if (it.example.isNotBlank()) Text(it.example, color = c.text.copy(alpha = .7f), fontSize = 12.sp)
+                    if (it.example.isNotBlank()) Text(it.example, color = c.text.copy(alpha = .7f), fontSize = 14.sp)
                 }
             }
             NeoButton("💾 Simpan ${result.size} kartu", {
                 Prefs.cards.addAll(result); Prefs.save(); result = emptyList()
             }, Modifier.fillMaxWidth(), c.green)
         }
-        Text("Tersimpan: ${Prefs.cards.size} kartu AI (pilih deck Kanji / Kosakata di Home)", color = c.text, fontSize = 12.sp)
+        Text("Tersimpan: ${Prefs.cards.size} kartu AI (pilih deck Kanji / Kosakata di Home)", color = c.text, fontSize = 14.sp)
         if (Prefs.cards.isNotEmpty()) NeoButton("Hapus semua kartu AI", { Prefs.cards.clear(); Prefs.save() }, Modifier.fillMaxWidth(), c.red)
     }
 }
@@ -323,7 +335,7 @@ fun SettingsScreen(back: () -> Unit) {
         Chips {
             NeoChip("Gemini", Prefs.provider == "gemini") {
                 Prefs.provider = "gemini"
-                if (!Prefs.model.startsWith("gemini")) Prefs.model = "gemini-2.5-flash"
+                if (!Prefs.model.startsWith("gemini")) Prefs.model = "gemini-3.8-flash"
                 Prefs.save()
             }
             NeoChip("OpenAI-compatible", Prefs.provider == "openai") {
@@ -340,10 +352,10 @@ fun SettingsScreen(back: () -> Unit) {
             Label("Base URL")
             NeoField(Prefs.baseUrl, { Prefs.baseUrl = it; Prefs.save() }, "https://.../v1", Modifier.fillMaxWidth())
             Text("Contoh: OpenRouter https://openrouter.ai/api/v1 • Groq https://api.groq.com/openai/v1 • OpenAI https://api.openai.com/v1",
-                color = c.text.copy(alpha = .7f), fontSize = 11.sp)
-        } else Text("API key Gemini gratis: aistudio.google.com", color = c.text.copy(alpha = .7f), fontSize = 11.sp)
+                color = c.text.copy(alpha = .7f), fontSize = 14.sp)
+        } else Text("API key Gemini gratis: aistudio.google.com", color = c.text.copy(alpha = .7f), fontSize = 14.sp)
         Label("Tema")
         Chips { listOf("Sistem", "Terang", "Gelap").forEachIndexed { i, s -> NeoChip(s, Prefs.theme == i) { Prefs.theme = i; Prefs.save() } } }
-        Text("API key disimpan lokal di perangkat.", color = c.text.copy(alpha = .7f), fontSize = 11.sp)
+        Text("API key disimpan lokal di perangkat.", color = c.text.copy(alpha = .7f), fontSize = 14.sp)
     }
 }

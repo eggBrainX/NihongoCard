@@ -12,7 +12,7 @@ object Ai {
         val c = URL(url).openConnection() as HttpURLConnection
         c.requestMethod = "POST"
         c.connectTimeout = 20000
-        c.readTimeout = 90000
+        c.readTimeout = 60000
         c.doOutput = true
         c.setRequestProperty("Content-Type", "application/json")
         headers.forEach { (k, v) -> c.setRequestProperty(k, v) }
@@ -28,10 +28,14 @@ object Ai {
         val key = Prefs.apiKey.trim()
         if (key.isEmpty()) throw Exception("API key belum diisi (buka Pengaturan)")
         if (Prefs.provider == "gemini") {
-            val url = "https://generativelanguage.googleapis.com/v1beta/models/${Prefs.model.trim()}:generateContent"
+            val url = "https://generativelanguage.googleapis.com/v1beta/models/${Prefs.model.trim().removePrefix("models/")}:generateContent"
             val body = JSONObject()
                 .put("contents", JSONArray().put(JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
-                .put("generationConfig", JSONObject().put("responseMimeType", "application/json"))
+                .put("generationConfig", JSONObject().put("responseMimeType", "application/json").apply {
+                    val m = Prefs.model
+                    if (m.contains("2.5") && m.contains("flash")) put("thinkingConfig", JSONObject().put("thinkingBudget", 0))
+                    else if (m.contains("gemini-3")) put("thinkingConfig", JSONObject().put("thinkingLevel", "low"))
+                })
             val res = post(url, body.toString(), mapOf("x-goog-api-key" to key))
             JSONObject(res).getJSONArray("candidates").getJSONObject(0)
                 .getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text")

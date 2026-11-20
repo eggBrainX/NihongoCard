@@ -16,6 +16,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -52,8 +53,9 @@ fun NeoTheme(dark: Boolean, content: @Composable () -> Unit) {
         background = c.bg, surface = c.surface, onBackground = c.text, onSurface = c.text,
         primary = c.main, onPrimary = c.onAccent
     )
+    val d = LocalDensity.current
     MaterialTheme(colorScheme = scheme) {
-        CompositionLocalProvider(LocalNeo provides c) {
+        CompositionLocalProvider(LocalNeo provides c, LocalDensity provides Density(d.density, d.fontScale * 1.2f)) {
             Surface(Modifier.fillMaxSize(), color = c.bg, content = content)
         }
     }
@@ -111,7 +113,7 @@ fun NeoButton(
     Box(
         modifier.neo(fill, pressed = pressed)
             .clickable(src, null, enabled = enabled, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 9.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center
     ) { Text(text, color = tc, fontWeight = FontWeight.Bold, fontSize = fontSize, textAlign = TextAlign.Center) }
 }

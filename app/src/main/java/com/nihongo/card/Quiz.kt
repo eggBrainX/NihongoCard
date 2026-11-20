@@ -68,8 +68,8 @@ fun QuizRunner(qs: List<Question>, timeSec: Int, onExit: () -> Unit) {
                 wrong.forEach {
                     NeoCard(Modifier.fillMaxWidth()) {
                         Text(it.prompt, color = c.text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("Jawaban: ${it.options[it.answer]}", color = c.text, fontSize = 13.sp)
-                        if (it.explain.isNotBlank()) Text(it.explain, color = c.text.copy(alpha = .7f), fontSize = 12.sp)
+                        Text("Jawaban: ${it.options[it.answer]}", color = c.text, fontSize = 15.sp)
+                        if (it.explain.isNotBlank()) Text(it.explain, color = c.text.copy(alpha = .7f), fontSize = 14.sp)
                     }
                 }
             }
@@ -77,17 +77,17 @@ fun QuizRunner(qs: List<Question>, timeSec: Int, onExit: () -> Unit) {
         }
     } else {
         val q = qs[idx]
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth()) {
-                Text("Soal ${idx + 1}/${qs.size}   ✓ $score", color = c.text, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                if (timeSec > 0) Text("⏱ %d:%02d".format(left / 60, left % 60), color = c.text, fontWeight = FontWeight.Bold)
+                Text("Soal ${idx + 1}/${qs.size}   ✓ $score", color = c.text, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                if (timeSec > 0) Text("⏱ %d:%02d".format(left / 60, left % 60), color = c.text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
-            NeoCard(Modifier.fillMaxWidth(), bg = c.main, center = true) {
+            NeoCard(Modifier.fillMaxWidth().weight(1.3f), bg = c.main, center = true) {
                 Text(
                     q.prompt, color = c.onAccent, fontWeight = FontWeight.Black, textAlign = TextAlign.Center,
-                    fontSize = if (q.prompt.length <= 4) 56.sp else if (q.prompt.length <= 10) 28.sp else 19.sp
+                    fontSize = if (q.prompt.length <= 4) 96.sp else if (q.prompt.length <= 10) 40.sp else 22.sp
                 )
-                if (q.sub.isNotBlank()) Text(q.sub, color = c.onAccent, fontSize = 12.sp)
+                if (q.sub.isNotBlank()) Text(q.sub, color = c.onAccent, fontSize = 15.sp)
             }
             q.options.forEachIndexed { i, o ->
                 val bg = when {
@@ -98,12 +98,12 @@ fun QuizRunner(qs: List<Question>, timeSec: Int, onExit: () -> Unit) {
                 }
                 NeoButton(
                     o, { if (picked < 0) { picked = i; if (i == q.answer) score++ else wrong.add(q) } },
-                    Modifier.fillMaxWidth(), bg, fontSize = if (o.length <= 3) 24.sp else 15.sp
+                    Modifier.fillMaxWidth().weight(1f), bg, fontSize = if (o.length <= 3) 34.sp else 18.sp
                 )
             }
             if (picked >= 0) {
                 if (q.explain.isNotBlank()) NeoCard(Modifier.fillMaxWidth(), bg = c.blue) {
-                    Text(q.explain, color = c.onAccent, fontSize = 13.sp)
+                    Text(q.explain, color = c.onAccent, fontSize = 15.sp)
                 }
                 NeoButton(if (idx + 1 < qs.size) "Lanjut →" else "Lihat hasil", {
                     if (idx + 1 < qs.size) { idx++; picked = -1 } else done = true

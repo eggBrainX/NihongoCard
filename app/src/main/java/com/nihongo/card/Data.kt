@@ -100,7 +100,7 @@ object Prefs {
     private lateinit var sp: SharedPreferences
     var provider by mutableStateOf("gemini")
     var apiKey by mutableStateOf("")
-    var model by mutableStateOf("gemini-2.5-flash")
+    var model by mutableStateOf("gemini-3.8-flash")
     var baseUrl by mutableStateOf("https://openrouter.ai/api/v1")
     var theme by mutableIntStateOf(0) // 0 sistem, 1 terang, 2 gelap
     val cards = mutableStateListOf<Flash>()
