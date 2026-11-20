@@ -100,10 +100,17 @@ fun NeoCard(
     )
 }
 
+fun String.hasJp() = any { it.code >= 0x3000 }
+
+/** Huruf Jepang pakai bobot normal (bold palsu membuat goresan menggumpal). */
+fun jpWeight(t: String, jp: FontWeight = FontWeight.Normal, other: FontWeight = FontWeight.Black) =
+    if (t.hasJp()) jp else other
+
 @Composable
 fun NeoButton(
     text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
-    bg: Color = LocalNeo.current.main, enabled: Boolean = true, fontSize: TextUnit = 14.sp
+    bg: Color = LocalNeo.current.main, enabled: Boolean = true, fontSize: TextUnit = 14.sp,
+    fit: Boolean = false // fit = true hanya untuk tombol dengan tinggi pasti (weight)
 ) {
     val c = LocalNeo.current
     val src = remember { MutableInteractionSource() }
@@ -115,7 +122,13 @@ fun NeoButton(
             .clickable(src, null, enabled = enabled, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center
-    ) { Text(text, color = tc, fontWeight = FontWeight.Bold, fontSize = fontSize, textAlign = TextAlign.Center) }
+    ) {
+        if (fit) BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            val dp = maxOf(minOf(maxHeight * 0.55f, maxWidth * 0.92f / text.length.coerceAtLeast(1)), 14.dp)
+            val sz = with(LocalDensity.current) { dp.toSp() }
+            Text(text, color = tc, fontWeight = jpWeight(text, FontWeight.Normal, FontWeight.Bold), fontSize = sz, textAlign = TextAlign.Center)
+        } else Text(text, color = tc, fontWeight = jpWeight(text, FontWeight.Medium, FontWeight.Bold), fontSize = fontSize, textAlign = TextAlign.Center)
+    }
 }
 
 @Composable

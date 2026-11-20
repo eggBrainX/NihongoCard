@@ -8,21 +8,51 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object Ai {
-    private fun post(url: String, body: String, headers: Map<String, String>): String {
+    private class HttpErr(val code: Int, msg: String) : Exception(msg)
+
+    private fun once(url: String, body: String, headers: Map<String, String>): String {
+        val bytes = body.toByteArray(Charsets.UTF_8)
         val c = URL(url).openConnection() as HttpURLConnection
-        c.requestMethod = "POST"
-        c.connectTimeout = 20000
-        c.readTimeout = 60000
-        c.doOutput = true
-        c.setRequestProperty("Content-Type", "application/json")
-        headers.forEach { (k, v) -> c.setRequestProperty(k, v) }
-        c.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
-        val code = c.responseCode
-        val stream = if (code in 200..299) c.inputStream else c.errorStream
-        val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-        if (code !in 200..299) throw Exception("HTTP $code: ${text.take(300)}")
-        return text
+        try {
+            c.requestMethod = "POST"
+            c.connectTimeout = 20000
+            c.readTimeout = 60000
+            c.useCaches = false
+            c.doOutput = true
+            c.setFixedLengthStreamingMode(bytes.size)
+            c.setRequestProperty("Content-Type", "application/json")
+            c.setRequestProperty("Accept-Encoding", "identity")
+            c.setRequestProperty("Connection", "close")
+            headers.forEach { (k, v) -> c.setRequestProperty(k, v) }
+            c.outputStream.use { it.write(bytes) }
+            val code = c.responseCode
+            val stream = if (code in 200..299) c.inputStream else c.errorStream
+            val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            if (code !in 200..299) throw HttpErr(code, "HTTP $code: ${text.take(300)}")
+            return text
+        } finally {
+            c.disconnect()
+        }
     }
+
+    /** Coba ulang sampai 3x untuk gangguan jaringan / server sibuk (429, 5xx). */
+    private fun post(url: String, body: String, headers: Map<String, String>): String {
+        var last: Exception? = null
+        for (i in 0 until 3) {
+            try {
+                return once(url, body, headers)
+            } catch (e: HttpErr) {
+                if (e.code !in listOf(429, 500, 502, 503, 504)) throw e
+                last = e
+            } catch (e: java.io.IOException) {
+                last = e
+            }
+            Thread.sleep(800L * (i + 1))
+        }
+        throw Exception("Koneksi gagal: ${last?.message}. Cek internet/VPN/DNS lalu coba lagi.")
+    }
+
+    suspend fun ping(): String = ask("Balas hanya JSON ini: [\"ok\"]").trim().take(60)
 
     private suspend fun ask(prompt: String): String = withContext(Dispatchers.IO) {
         val key = Prefs.apiKey.trim()

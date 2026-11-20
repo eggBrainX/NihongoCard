@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -60,7 +61,7 @@ fun HomeScreen(go: (String) -> Unit) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("日本語カード", fontSize = 26.sp, fontWeight = FontWeight.Black, color = c.text)
+                Text("日本語カード", fontSize = 26.sp, fontWeight = FontWeight.Medium, color = c.text)
                 Text("Belajar Jepang, ringkas & seru", fontSize = 14.sp, color = c.text.copy(alpha = .7f))
             }
             NeoButton("⚙", { go("settings") }, bg = c.blue)
@@ -106,16 +107,27 @@ fun StudyScreen(back: () -> Unit) {
             val f = queue[0]
             Text("Hafal ${total - queue.size}/$total", color = c.text, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             NeoCard(Modifier.fillMaxWidth().weight(1f), bg = if (flipped) c.pink else c.main, onClick = { flipped = !flipped }, center = true) {
-                if (!flipped) {
-                    Text(f.front, color = c.onAccent, fontWeight = FontWeight.Black, textAlign = TextAlign.Center,
-                        fontSize = if (f.front.length > 3) 56.sp else 140.sp)
-                    Text("ketuk untuk membalik", color = c.onAccent, fontSize = 14.sp)
-                } else {
-                    Text(f.meaning, color = c.onAccent, fontWeight = FontWeight.Black, fontSize = 34.sp, textAlign = TextAlign.Center)
-                    if (f.reading.isNotBlank()) Text(f.reading, color = c.onAccent, fontSize = 26.sp, textAlign = TextAlign.Center)
-                    if (f.example.isNotBlank()) Text(f.example, color = c.onAccent, fontSize = 17.sp, textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 10.dp))
-                    Text(f.level, color = c.onAccent, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
+                BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    val d = LocalDensity.current
+                    val w = maxWidth
+                    val h = maxHeight
+                    fun fit(t: String, maxF: Float) =
+                        with(d) { maxOf(minOf(h * maxF, w * 0.9f / t.length.coerceAtLeast(1)), 20.dp).toSp() }
+                    if (!flipped) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(f.front, color = c.onAccent, fontWeight = FontWeight.Normal, textAlign = TextAlign.Center, fontSize = fit(f.front, 0.5f))
+                            Text("ketuk untuk membalik", color = c.onAccent, fontSize = 16.sp)
+                        }
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(f.meaning, color = c.onAccent, fontWeight = jpWeight(f.meaning, FontWeight.Normal, FontWeight.Black),
+                                fontSize = fit(f.meaning, 0.22f), textAlign = TextAlign.Center)
+                            if (f.reading.isNotBlank()) Text(f.reading, color = c.onAccent, fontWeight = FontWeight.Normal,
+                                fontSize = fit(f.reading, 0.12f), textAlign = TextAlign.Center)
+                            if (f.example.isNotBlank()) Text(f.example, color = c.onAccent, fontSize = 18.sp, textAlign = TextAlign.Center)
+                            Text(f.level, color = c.onAccent, fontSize = 16.sp)
+                        }
+                    }
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -155,7 +167,7 @@ fun QuizScreen(sim: Boolean, back: () -> Unit) {
             if (pool.size < 4) EmptyCard()
             NeoButton("▶ Mulai dari kartu (${AppState.deck.label})", {
                 qs = makeQuestions(pool, count, if (sim) 2 else dir)
-            }, Modifier.fillMaxWidth().weight(1f), c.green, enabled = pool.size >= 4, fontSize = 20.sp)
+            }, Modifier.fillMaxWidth().weight(1f).heightIn(max = 180.dp), c.green, enabled = pool.size >= 4, fontSize = 20.sp)
             NeoButton(if (loading) "⏳ Membuat soal… (ketuk untuk batal)" else "✨ Contoh soal AI (${AppState.level.label})", {
                 if (loading) { job?.cancel(); loading = false }
                 else {
@@ -167,7 +179,7 @@ fun QuizScreen(sim: Boolean, back: () -> Unit) {
                         loading = false
                     }
                 }
-            }, Modifier.fillMaxWidth().weight(1f), c.pink, fontSize = 20.sp)
+            }, Modifier.fillMaxWidth().weight(1f).heightIn(max = 180.dp), c.pink, fontSize = 20.sp)
             if (err.isNotBlank()) NeoCard(Modifier.fillMaxWidth(), bg = c.red) { Text(err, color = c.onAccent, fontSize = 14.sp) }
         }
     }
@@ -189,7 +201,7 @@ fun WriteScreen(back: () -> Unit) {
         NeoCard(Modifier.fillMaxWidth(), bg = c.main, center = true) {
             Text("Tulis: ${f.meaning}", color = c.onAccent, fontWeight = FontWeight.Black, fontSize = 20.sp, textAlign = TextAlign.Center)
             if (f.reading.isNotBlank()) Text(f.reading, color = c.onAccent, fontSize = 14.sp)
-            if (reveal) Text(f.front, color = c.onAccent, fontWeight = FontWeight.Black, fontSize = 48.sp)
+            if (reveal) Text(f.front, color = c.onAccent, fontWeight = FontWeight.Normal, fontSize = 64.sp)
         }
         Box(
             Modifier.fillMaxWidth().weight(1f).neo(c.surface)
@@ -202,7 +214,10 @@ fun WriteScreen(back: () -> Unit) {
                     )
                 }
         ) {
-            if (guide) Text(f.front, fontSize = 160.sp, color = c.text.copy(alpha = .15f), modifier = Modifier.align(Alignment.Center))
+            if (guide) BoxWithConstraints(Modifier.fillMaxSize()) {
+                val gs = with(LocalDensity.current) { (minOf(maxWidth, maxHeight) * 0.8f / f.front.length.coerceAtLeast(1)).toSp() }
+                Text(f.front, fontSize = gs, fontWeight = FontWeight.Normal, color = c.text.copy(alpha = .15f), modifier = Modifier.align(Alignment.Center))
+            }
             Canvas(Modifier.fillMaxSize()) {
                 (strokes.toList() + listOf(current)).forEach { pts ->
                     if (pts.size > 1) {
@@ -252,14 +267,14 @@ fun MatchScreen(back: () -> Unit) {
                     left.forEach { f ->
                         NeoButton(f.front, { if (f !in done) selL = f }, Modifier.fillMaxWidth().weight(1f),
                             when { f in done -> c.green; f == selL -> c.main; else -> c.surface },
-                            fontSize = if (f.front.length > 2) 22.sp else 34.sp)
+                            fontSize = 20.sp, fit = f.front.length <= 4)
                     }
                 }
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     right.forEach { f ->
                         NeoButton(f.meaning, { if (f !in done) selR = f }, Modifier.fillMaxWidth().weight(1f),
                             when { f in done -> c.green; f == selR -> c.main; else -> c.surface },
-                            fontSize = if (f.meaning.length > 8) 16.sp else 22.sp)
+                            fontSize = 17.sp, fit = f.meaning.length <= 6)
                     }
                 }
             }
@@ -329,6 +344,9 @@ fun AiScreen(back: () -> Unit) {
 @Composable
 fun SettingsScreen(back: () -> Unit) {
     val c = LocalNeo.current
+    val scope = rememberCoroutineScope()
+    var testing by remember { mutableStateOf(false) }
+    var testMsg by remember { mutableStateOf("") }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         TopBar("Pengaturan", back)
         Label("Penyedia AI")
@@ -354,6 +372,20 @@ fun SettingsScreen(back: () -> Unit) {
             Text("Contoh: OpenRouter https://openrouter.ai/api/v1 • Groq https://api.groq.com/openai/v1 • OpenAI https://api.openai.com/v1",
                 color = c.text.copy(alpha = .7f), fontSize = 14.sp)
         } else Text("API key Gemini gratis: aistudio.google.com", color = c.text.copy(alpha = .7f), fontSize = 14.sp)
+        NeoButton(if (testing) "Menguji…" else "🔌 Tes koneksi API", {
+            if (!testing) {
+                testing = true; testMsg = ""
+                scope.launch {
+                    testMsg = try { "✓ Berhasil: " + Ai.ping() }
+                    catch (e: CancellationException) { throw e }
+                    catch (e: Throwable) { "✗ " + (e.message ?: "Gagal") }
+                    testing = false
+                }
+            }
+        }, Modifier.fillMaxWidth(), c.green, enabled = !testing)
+        if (testMsg.isNotBlank()) NeoCard(Modifier.fillMaxWidth(), bg = if (testMsg.startsWith("✓")) c.green else c.red) {
+            Text(testMsg, color = c.onAccent, fontSize = 14.sp)
+        }
         Label("Tema")
         Chips { listOf("Sistem", "Terang", "Gelap").forEachIndexed { i, s -> NeoChip(s, Prefs.theme == i) { Prefs.theme = i; Prefs.save() } } }
         Text("API key disimpan lokal di perangkat.", color = c.text.copy(alpha = .7f), fontSize = 14.sp)

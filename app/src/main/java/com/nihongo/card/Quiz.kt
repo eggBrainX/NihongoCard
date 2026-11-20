@@ -5,6 +5,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -83,11 +85,15 @@ fun QuizRunner(qs: List<Question>, timeSec: Int, onExit: () -> Unit) {
                 if (timeSec > 0) Text("⏱ %d:%02d".format(left / 60, left % 60), color = c.text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
             NeoCard(Modifier.fillMaxWidth().weight(1.3f), bg = c.main, center = true) {
-                Text(
-                    q.prompt, color = c.onAccent, fontWeight = FontWeight.Black, textAlign = TextAlign.Center,
-                    fontSize = if (q.prompt.length <= 4) 96.sp else if (q.prompt.length <= 10) 40.sp else 22.sp
-                )
-                if (q.sub.isNotBlank()) Text(q.sub, color = c.onAccent, fontSize = 15.sp)
+                BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    val sz = with(LocalDensity.current) {
+                        maxOf(minOf(maxHeight * 0.5f, maxWidth * 0.9f / q.prompt.length.coerceAtLeast(1)), 22.dp).toSp()
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(q.prompt, color = c.onAccent, fontWeight = jpWeight(q.prompt), textAlign = TextAlign.Center, fontSize = sz)
+                        if (q.sub.isNotBlank()) Text(q.sub, color = c.onAccent, fontSize = 16.sp)
+                    }
+                }
             }
             q.options.forEachIndexed { i, o ->
                 val bg = when {
@@ -98,7 +104,7 @@ fun QuizRunner(qs: List<Question>, timeSec: Int, onExit: () -> Unit) {
                 }
                 NeoButton(
                     o, { if (picked < 0) { picked = i; if (i == q.answer) score++ else wrong.add(q) } },
-                    Modifier.fillMaxWidth().weight(1f), bg, fontSize = if (o.length <= 3) 34.sp else 18.sp
+                    Modifier.fillMaxWidth().weight(1f).heightIn(min = 56.dp), bg, fontSize = 18.sp, fit = o.length <= 10
                 )
             }
             if (picked >= 0) {
